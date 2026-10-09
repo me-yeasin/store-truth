@@ -30,11 +30,22 @@ export type DemoSale = {
   createdAt: string;
 };
 
+export type DemoCash = {
+  id: string;
+  kind: "count" | "in" | "out";
+  amount: number;
+  date: string;
+  note: string;
+  ownerEmail: string;
+  createdAt: string;
+};
+
 const USERS_KEY = "store-truth-demo-users";
 const SESSION_KEY = "store-truth-demo-session";
 const BUSINESS_KEY = "store-truth-demo-business";
 const LOCATION_KEY = "store-truth-demo-location";
 const SALES_KEY = "store-truth-demo-sales";
+const CASH_KEY = "store-truth-demo-cash";
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -108,6 +119,13 @@ export function getSalesSnapshotString(): string {
   return JSON.stringify(getSales());
 }
 
+export const EMPTY_CASH_SNAPSHOT = "[]";
+
+export function getCashSnapshotString(): string {
+  if (!isBrowser()) return EMPTY_CASH_SNAPSHOT;
+  return JSON.stringify(getCash());
+}
+
 export function getUsers(): DemoUser[] {
   return read<DemoUser[]>(USERS_KEY, []);
 }
@@ -176,6 +194,30 @@ export function deleteSale(id: string) {
   write(
     SALES_KEY,
     getSales().filter((s) => s.id !== id)
+  );
+}
+
+export function getCash(): DemoCash[] {
+  return read<DemoCash[]>(CASH_KEY, []);
+}
+
+export function addCash(entry: Omit<DemoCash, "id" | "createdAt">): DemoCash {
+  const record: DemoCash = {
+    ...entry,
+    id:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    createdAt: new Date().toISOString(),
+  };
+  write(CASH_KEY, [record, ...getCash()]);
+  return record;
+}
+
+export function deleteCash(id: string) {
+  write(
+    CASH_KEY,
+    getCash().filter((c) => c.id !== id)
   );
 }
 
