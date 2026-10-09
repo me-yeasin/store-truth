@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Store Truth
 
-## Getting Started
+**The tool that tells a small business what it actually made today.**
 
-First, run the development server:
+Store Truth replaces spreadsheet-and-trust chaos with one truth-first page per day per location: POS sales vs cash counted vs bank received, plus inventory and vendor checks.
+
+## Who it is for
+
+Small retail / service owners with 1+ locations who take cash, use a POS and a bank, and today rely on spreadsheets or one person's word.
+
+Core question it answers: "Did we actually sell what the POS says? Where is the cash? What did we really make?"
+
+## Current status: Step 1 — App shell
+
+Empty Next.js shell with sidebar + top bar navigation, Today's Truth home, and placeholder pages for Locations, Exceptions, Sales, Cash, Bank, Inventory, Vendors, Imports, Reports, Audit, Settings. No auth, no database, no real logic yet.
+
+## How to run locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- `app/layout.tsx` — root layout, mounts `AppShell`
+- `app/page.tsx` — Today's Truth home
+- `app/_components/AppShell.tsx` — sidebar + top bar + mobile nav (client component)
+- `app/_components/PageHeader.tsx` — consistent title + plain-language explanation
+- `app/_components/EmptyState.tsx` — consistent empty state + next step
+- `app/[section]/page.tsx` — one folder per section (locations, sales, cash, ...)
 
-## Learn More
+## Next steps
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Authentication + user account
+2. Business + location model
+3. Transaction, cash, bank models + manual entry
+4. CSV import + review workflow
+5. Daily truth + reconciliation engine
