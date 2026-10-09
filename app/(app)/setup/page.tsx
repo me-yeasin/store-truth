@@ -1,17 +1,36 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import PageHeader from "../../_components/PageHeader";
-import { getBusiness, setBusiness } from "../../_lib/demo-store";
+import {
+  EMPTY_DEMO_SNAPSHOT,
+  getDemoSnapshotString,
+  setBusiness,
+  subscribeToDemoChanges,
+  type DemoSnapshot,
+} from "../../_lib/demo-store";
 
 const inputClass =
   "w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900";
 
 export default function SetupBusinessPage() {
   const router = useRouter();
-  const [name, setName] = useState(() => getBusiness()?.name ?? "");
-  const [currency, setCurrency] = useState(() => getBusiness()?.currency ?? "USD");
+  // Snapshot (not raw render reads) so server and first client paint match.
+  // Drafts stay null until the user types, then they win over stored values.
+  const snapshotString = useSyncExternalStore(
+    subscribeToDemoChanges,
+    getDemoSnapshotString,
+    () => EMPTY_DEMO_SNAPSHOT
+  );
+  const { business: savedBusiness } = useMemo(
+    () => JSON.parse(snapshotString) as DemoSnapshot,
+    [snapshotString]
+  );
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const [currencyDraft, setCurrencyDraft] = useState<string | null>(null);
+  const name = nameDraft ?? savedBusiness?.name ?? "";
+  const currency = currencyDraft ?? savedBusiness?.currency ?? "USD";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +64,7 @@ export default function SetupBusinessPage() {
           required
           placeholder="Corner Shop"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setNameDraft(e.target.value)}
           className={inputClass}
         />
 
@@ -55,7 +74,7 @@ export default function SetupBusinessPage() {
         <select
           id="currency"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value)}
+          onChange={(e) => setCurrencyDraft(e.target.value)}
           className={inputClass}
         >
           <option value="USD">USD — US Dollar</option>

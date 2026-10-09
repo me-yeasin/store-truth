@@ -2,16 +2,32 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import PageHeader from "../../../_components/PageHeader";
-import { getLocation, setLocation } from "../../../_lib/demo-store";
+import {
+  EMPTY_DEMO_SNAPSHOT,
+  getDemoSnapshotString,
+  setLocation,
+  subscribeToDemoChanges,
+  type DemoSnapshot,
+} from "../../../_lib/demo-store";
 
 const inputClass =
   "w-full rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900";
 
 export default function SetupLocationPage() {
   const router = useRouter();
-  const [name, setName] = useState(() => getLocation()?.name ?? "");
+  const snapshotString = useSyncExternalStore(
+    subscribeToDemoChanges,
+    getDemoSnapshotString,
+    () => EMPTY_DEMO_SNAPSHOT
+  );
+  const { location: savedLocation } = useMemo(
+    () => JSON.parse(snapshotString) as DemoSnapshot,
+    [snapshotString]
+  );
+  const [nameDraft, setNameDraft] = useState<string | null>(null);
+  const name = nameDraft ?? savedLocation?.name ?? "";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,7 +61,7 @@ export default function SetupLocationPage() {
           required
           placeholder="Main Street shop"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => setNameDraft(e.target.value)}
           className={inputClass}
         />
 

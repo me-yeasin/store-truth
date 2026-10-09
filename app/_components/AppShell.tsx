@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import {
-  getBusiness,
-  getLocation,
-  getSession,
+  EMPTY_DEMO_SNAPSHOT,
+  getDemoSnapshotString,
   setSession,
+  subscribeToDemoChanges,
+  type DemoSnapshot,
 } from "../_lib/demo-store";
 
 type NavItem = {
@@ -104,17 +105,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
-  const demoState = useMemo(
-    () => ({
-      email: getSession()?.email ?? null,
-      business: getBusiness(),
-      location: getLocation(),
-    }),
-    // Re-read browser demo data whenever the route changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [pathname]
+  // useSyncExternalStore keeps server HTML and first client paint identical
+  // (both use EMPTY_DEMO_SNAPSHOT), then swaps in browser data after hydration.
+  const snapshotString = useSyncExternalStore(
+    subscribeToDemoChanges,
+    getDemoSnapshotString,
+    () => EMPTY_DEMO_SNAPSHOT
   );
-  const { email, business, location } = demoState;
+  const { email, business, location } = useMemo(
+    () => JSON.parse(snapshotString) as DemoSnapshot,
+    [snapshotString]
+  );
 
   function handleSignOut() {
     setSession(null);

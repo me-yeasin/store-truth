@@ -20,10 +20,21 @@ export type DemoSession = {
   email: string;
 };
 
+export type DemoSale = {
+  id: string;
+  amount: number;
+  date: string;
+  method: "cash" | "card";
+  note: string;
+  ownerEmail: string;
+  createdAt: string;
+};
+
 const USERS_KEY = "store-truth-demo-users";
 const SESSION_KEY = "store-truth-demo-session";
 const BUSINESS_KEY = "store-truth-demo-business";
 const LOCATION_KEY = "store-truth-demo-location";
+const SALES_KEY = "store-truth-demo-sales";
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -43,6 +54,58 @@ function read<T>(key: string, fallback: T): T {
 function write(key: string, value: unknown) {
   if (!isBrowser()) return;
   window.localStorage.setItem(key, JSON.stringify(value));
+  notifyDemoChange();
+}
+
+function remove(key: string) {
+  if (!isBrowser()) return;
+  window.localStorage.removeItem(key);
+  notifyDemoChange();
+}
+
+const DEMO_CHANGE_EVENT = "store-truth-demo-change";
+
+function notifyDemoChange() {
+  if (!isBrowser()) return;
+  window.dispatchEvent(new Event(DEMO_CHANGE_EVENT));
+}
+
+export function subscribeToDemoChanges(callback: () => void) {
+  if (!isBrowser()) return () => {};
+  window.addEventListener(DEMO_CHANGE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(DEMO_CHANGE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+export type DemoSnapshot = {
+  email: string | null;
+  business: DemoBusiness | null;
+  location: DemoLocation | null;
+};
+
+export const EMPTY_DEMO_SNAPSHOT = '{"email":null,"business":null,"location":null}';
+
+export function getDemoSnapshotString(): string {
+  // Reads browser storage. Call only from useSyncExternalStore getSnapshot
+  // (client) — never during render — so server and client agree on first paint.
+  if (!isBrowser()) return EMPTY_DEMO_SNAPSHOT;
+  const snapshot: DemoSnapshot = {
+    email: getSession()?.email ?? null,
+    business: getBusiness(),
+    location: getLocation(),
+  };
+  return JSON.stringify(snapshot);
+}
+
+export const EMPTY_SALES_SNAPSHOT = "[]";
+
+export function getSalesSnapshotString(): string {
+  // Same rule as above: subscribe via useSyncExternalStore, never raw render.
+  if (!isBrowser()) return EMPTY_SALES_SNAPSHOT;
+  return JSON.stringify(getSales());
 }
 
 export function getUsers(): DemoUser[] {
@@ -68,7 +131,7 @@ export function getSession(): DemoSession | null {
 export function setSession(session: DemoSession | null) {
   if (!isBrowser()) return;
   if (session) write(SESSION_KEY, session);
-  else window.localStorage.removeItem(SESSION_KEY);
+  else remove(SESSION_KEY);
 }
 
 export function getBusiness(): DemoBusiness | null {
@@ -89,5 +152,36 @@ export function setLocation(location: DemoLocation) {
 
 export function clearDemoData() {
   if (!isBrowser()) return;
-  window.localStorage.removeItem(SESSION_KEY);
+  remove(SESSION_KEY);
+}
+
+export function getSales(): DemoSale[] {
+  return read<DemoSale[]>(SALES_KEY, []);
+}
+
+export function addSale(sale: Omit<DemoSale, "id" | "createdAt">): DemoSale {
+  const entry: DemoSale = {
+    ...sale,
+    id:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    createdAt: new Date().toISOString(),
+  };
+  write(SALES_KEY, [entry, ...getSales()]);
+  return entry;
+}
+
+export function deleteSale(id: string) {
+  write(
+    SALES_KEY,
+    getSales().filter((s) => s.id !== id)
+  );
+}
+
+export function todayISODate(): string {
+  const d = new Date();
+  const month = `${d.getMonth() + 1}`.padStart(2, "0");
+  const day = `${d.getDate()}`.padStart(2, "0");
+  return `${d.getFullYear()}-${month}-${day}`;
 }
