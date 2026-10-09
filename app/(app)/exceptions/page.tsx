@@ -1,5 +1,5 @@
-import EmptyState from "../_components/EmptyState";
-import PageHeader from "../_components/PageHeader";
+import EmptyState from "../../_components/EmptyState";
+import PageHeader from "../../_components/PageHeader";
 
 export default function ExceptionsPage() {
   return (
@@ -16,3 +16,6 @@ export default function ExceptionsPage() {
     </div>
   );
 }
+
+
+

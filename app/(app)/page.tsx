@@ -1,6 +1,6 @@
 import Link from "next/link";
-import EmptyState from "./_components/EmptyState";
-import PageHeader from "./_components/PageHeader";
+import EmptyState from "../_components/EmptyState";
+import PageHeader from "../_components/PageHeader";
 
 const CARDS = [
   {
@@ -92,3 +92,6 @@ export default function Home() {
     </div>
   );
 }
+
+
+

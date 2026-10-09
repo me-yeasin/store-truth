@@ -137,12 +137,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               Alerts · 0
             </Link>
-            <span
-              aria-label="Signed in as demo owner"
-              className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-900 text-xs font-bold text-white"
+            <Link
+              href="/login"
+              className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
             >
-              O
-            </span>
+              Sign in
+            </Link>
           </div>
         </div>
 
