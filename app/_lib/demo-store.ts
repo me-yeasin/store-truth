@@ -40,12 +40,23 @@ export type DemoCash = {
   createdAt: string;
 };
 
+export type DemoBank = {
+  id: string;
+  kind: "deposit" | "withdrawal" | "transfer";
+  amount: number;
+  date: string;
+  note: string;
+  ownerEmail: string;
+  createdAt: string;
+};
+
 const USERS_KEY = "store-truth-demo-users";
 const SESSION_KEY = "store-truth-demo-session";
 const BUSINESS_KEY = "store-truth-demo-business";
 const LOCATION_KEY = "store-truth-demo-location";
 const SALES_KEY = "store-truth-demo-sales";
 const CASH_KEY = "store-truth-demo-cash";
+const BANK_KEY = "store-truth-demo-bank";
 
 function isBrowser() {
   return typeof window !== "undefined";
@@ -99,6 +110,17 @@ export type DemoSnapshot = {
 
 export const EMPTY_DEMO_SNAPSHOT = '{"email":null,"business":null,"location":null}';
 
+export function safeParse<T>(raw: unknown, fallback: T): T {
+  // Guards against stale dev-server modules or corrupt browser data:
+  // never let a bad snapshot crash the page.
+  try {
+    if (typeof raw !== "string") return fallback;
+    return JSON.parse(raw) as T;
+  } catch {
+    return fallback;
+  }
+}
+
 export function getDemoSnapshotString(): string {
   // Reads browser storage. Call only from useSyncExternalStore getSnapshot
   // (client) — never during render — so server and client agree on first paint.
@@ -124,6 +146,13 @@ export const EMPTY_CASH_SNAPSHOT = "[]";
 export function getCashSnapshotString(): string {
   if (!isBrowser()) return EMPTY_CASH_SNAPSHOT;
   return JSON.stringify(getCash());
+}
+
+export const EMPTY_BANK_SNAPSHOT = "[]";
+
+export function getBankSnapshotString(): string {
+  if (!isBrowser()) return EMPTY_BANK_SNAPSHOT;
+  return JSON.stringify(getBank());
 }
 
 export function getUsers(): DemoUser[] {
@@ -218,6 +247,30 @@ export function deleteCash(id: string) {
   write(
     CASH_KEY,
     getCash().filter((c) => c.id !== id)
+  );
+}
+
+export function getBank(): DemoBank[] {
+  return read<DemoBank[]>(BANK_KEY, []);
+}
+
+export function addBank(entry: Omit<DemoBank, "id" | "createdAt">): DemoBank {
+  const record: DemoBank = {
+    ...entry,
+    id:
+      typeof crypto !== "undefined" && "randomUUID" in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    createdAt: new Date().toISOString(),
+  };
+  write(BANK_KEY, [record, ...getBank()]);
+  return record;
+}
+
+export function deleteBank(id: string) {
+  write(
+    BANK_KEY,
+    getBank().filter((b) => b.id !== id)
   );
 }
 

@@ -10,6 +10,7 @@ import {
   EMPTY_SALES_SNAPSHOT,
   getDemoSnapshotString,
   getSalesSnapshotString,
+  safeParse,
   subscribeToDemoChanges,
   todayISODate,
   type DemoSale,
@@ -37,11 +38,11 @@ export default function SalesPage() {
     () => EMPTY_SALES_SNAPSHOT
   );
   const { email: sessionEmail, business } = useMemo(
-    () => JSON.parse(snapshotString) as DemoSnapshot,
+    () => safeParse<DemoSnapshot>(snapshotString, { email: null, business: null, location: null }),
     [snapshotString]
   );
   const sales = useMemo(
-    () => JSON.parse(salesSnapshotString) as DemoSale[],
+    () => safeParse<DemoSale[]>(salesSnapshotString, []),
     [salesSnapshotString]
   );
   const [amount, setAmount] = useState("");

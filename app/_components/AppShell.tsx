@@ -6,6 +6,7 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   EMPTY_DEMO_SNAPSHOT,
   getDemoSnapshotString,
+  safeParse,
   setSession,
   subscribeToDemoChanges,
   type DemoSnapshot,
@@ -113,7 +114,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     () => EMPTY_DEMO_SNAPSHOT
   );
   const { email, business, location } = useMemo(
-    () => JSON.parse(snapshotString) as DemoSnapshot,
+    () => safeParse<DemoSnapshot>(snapshotString, { email: null, business: null, location: null }),
     [snapshotString]
   );
 

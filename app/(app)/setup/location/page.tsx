@@ -7,6 +7,7 @@ import PageHeader from "../../../_components/PageHeader";
 import {
   EMPTY_DEMO_SNAPSHOT,
   getDemoSnapshotString,
+  safeParse,
   setLocation,
   subscribeToDemoChanges,
   type DemoSnapshot,
@@ -23,7 +24,7 @@ export default function SetupLocationPage() {
     () => EMPTY_DEMO_SNAPSHOT
   );
   const { location: savedLocation } = useMemo(
-    () => JSON.parse(snapshotString) as DemoSnapshot,
+    () => safeParse<DemoSnapshot>(snapshotString, { email: null, business: null, location: null }),
     [snapshotString]
   );
   const [nameDraft, setNameDraft] = useState<string | null>(null);

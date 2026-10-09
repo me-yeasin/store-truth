@@ -6,6 +6,7 @@ import PageHeader from "../../_components/PageHeader";
 import {
   EMPTY_DEMO_SNAPSHOT,
   getDemoSnapshotString,
+  safeParse,
   setBusiness,
   subscribeToDemoChanges,
   type DemoSnapshot,
@@ -24,7 +25,7 @@ export default function SetupBusinessPage() {
     () => EMPTY_DEMO_SNAPSHOT
   );
   const { business: savedBusiness } = useMemo(
-    () => JSON.parse(snapshotString) as DemoSnapshot,
+    () => safeParse<DemoSnapshot>(snapshotString, { email: null, business: null, location: null }),
     [snapshotString]
   );
   const [nameDraft, setNameDraft] = useState<string | null>(null);
