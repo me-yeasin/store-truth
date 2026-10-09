@@ -1,8 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import {
+  getBusiness,
+  getLocation,
+  getSession,
+  setSession,
+} from "../_lib/demo-store";
 
 type NavItem = {
   href: string;
@@ -97,6 +103,27 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+  const demoState = useMemo(
+    () => ({
+      email: getSession()?.email ?? null,
+      business: getBusiness(),
+      location: getLocation(),
+    }),
+    // Re-read browser demo data whenever the route changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pathname]
+  );
+  const { email, business, location } = demoState;
+
+  function handleSignOut() {
+    setSession(null);
+    router.push("/login");
+  }
+
+  const contextLabel = business
+    ? `${business.name} · ${location?.name ?? "All locations"}`
+    : "Demo Business · All locations";
 
   return (
     <div className="flex min-h-screen flex-col bg-zinc-50 text-zinc-950">
@@ -128,7 +155,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           <div className="ml-auto flex items-center gap-2 md:gap-3">
             <span className="hidden rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-xs font-medium text-zinc-700 sm:block">
-              Demo Business · All locations
+              {contextLabel}
             </span>
             <Link
               href="/exceptions"
@@ -137,12 +164,23 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               Alerts · 0
             </Link>
-            <Link
-              href="/login"
-              className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
-            >
-              Sign in
-            </Link>
+            {email ? (
+              <button
+                type="button"
+                onClick={handleSignOut}
+                aria-label={`Sign out ${email}`}
+                className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+              >
+                Sign out
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                className="rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-zinc-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
         </div>
 
@@ -158,10 +196,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <div className="sticky top-20 rounded-2xl border border-zinc-200 bg-white p-4">
             <div className="mb-4 rounded-xl bg-zinc-50 p-3">
               <p className="text-xs font-medium text-zinc-500">Business</p>
-              <p className="text-sm font-semibold">Demo Business</p>
+              <p className="text-sm font-semibold">{business?.name ?? "Demo Business"}</p>
               <p className="mt-1 text-xs text-zinc-500">
-                No real data yet. This shell is ready for real numbers.
+                {email
+                  ? `Signed in as ${email}. Demo data lives in this browser only.`
+                  : "No real data yet. This shell is ready for real numbers."}
               </p>
+              {!business ? (
+                <Link
+                  href="/setup"
+                  className="mt-2 inline-block text-xs font-semibold text-zinc-900 underline-offset-4 hover:underline"
+                >
+                  Set up business →
+                </Link>
+              ) : null}
             </div>
             <SidebarNav />
           </div>
