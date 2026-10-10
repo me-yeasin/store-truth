@@ -78,6 +78,18 @@ export type DemoExpense = {
   createdAt: string;
 };
 
+export type DemoImport = {
+  id: string;
+  locationId: string | null;
+  fileName: string;
+  section: string;
+  total: number;
+  imported: number;
+  rejected: number;
+  ownerEmail: string;
+  createdAt: string;
+};
+
 const USERS_KEY = "store-truth-demo-users";
 const SESSION_KEY = "store-truth-demo-session";
 const BUSINESS_KEY = "store-truth-demo-business";
@@ -91,6 +103,7 @@ const INVENTORY_KEY = "store-truth-demo-inventory";
 const EXPENSE_KEY = "store-truth-demo-expenses";
 const SEED_IDS_KEY = "store-truth-demo-seed-ids";
 const SEED_FLAG_KEY = "store-truth-demo-seeded";
+const IMPORTS_KEY = "store-truth-demo-imports";
 
 function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -207,6 +220,13 @@ export const EMPTY_EXPENSE_SNAPSHOT = "[]";
 export function getExpenseSnapshotString(): string {
   if (!isBrowser()) return EMPTY_EXPENSE_SNAPSHOT;
   return JSON.stringify(getExpenses());
+}
+
+export const EMPTY_IMPORTS_SNAPSHOT = "[]";
+
+export function getImportsSnapshotString(): string {
+  if (!isBrowser()) return EMPTY_IMPORTS_SNAPSHOT;
+  return JSON.stringify(getImports());
 }
 
 export function getUsers(): DemoUser[] {
@@ -484,6 +504,21 @@ export function deleteExpense(id: string) {
     EXPENSE_KEY,
     getExpenses().filter((e) => e.id !== id)
   );
+}
+
+export function getImports(): DemoImport[] {
+  return read<DemoImport[]>(IMPORTS_KEY, []);
+}
+
+export function addImport(entry: Omit<DemoImport, "id" | "createdAt">): DemoImport {
+  const record: DemoImport = {
+    ...entry,
+    id: newId(),
+    createdAt: new Date().toISOString(),
+  };
+  // Keep the most recent 20 imports.
+  write(IMPORTS_KEY, [record, ...getImports()].slice(0, 20));
+  return record;
 }
 
 export function todayISODate(): string {
