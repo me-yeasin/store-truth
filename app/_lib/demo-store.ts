@@ -413,6 +413,29 @@ export function clearDemoData() {
   remove(SESSION_KEY);
 }
 
+export function clearAllDemoData() {
+  if (!isBrowser()) return;
+  for (const key of [
+    SESSION_KEY,
+    BUSINESS_KEY,
+    LOCATION_KEY,
+    LOCATIONS_KEY,
+    ACTIVE_LOCATION_KEY,
+    SALES_KEY,
+    CASH_KEY,
+    BANK_KEY,
+    INVENTORY_KEY,
+    EXPENSE_KEY,
+    IMPORTS_KEY,
+    AUDIT_KEY,
+    SEED_IDS_KEY,
+    SEED_FLAG_KEY,
+  ]) {
+    window.localStorage.removeItem(key);
+  }
+  notifyDemoChange();
+}
+
 export function getSales(): DemoSale[] {
   return read<DemoSale[]>(SALES_KEY, []);
 }
