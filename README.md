@@ -4,7 +4,7 @@
 
 Store Truth is an open-source Next.js app that replaces spreadsheet-and-trust chaos for small retail and service businesses. It compares POS sales, cash drawer counts, and bank deposits side by side — per day, per location — and surfaces every mismatch in plain words. No accounting jargon. No hidden formulas.
 
-![Today's truth view with sample data showing POS sales, cash variance, and bank gap](docs/screenshots/todays-truth.png)
+![Today's truth view with sample data showing POS sales, cash variance, and bank gap](docs/screenshots/todays-truth-final.png)
 
 > Keywords: pos reconciliation, point of sale, small business, retail management, cash reconciliation, bank reconciliation, inventory management, expense tracking, daily sales report, open source, nextjs, ai assistant
 
