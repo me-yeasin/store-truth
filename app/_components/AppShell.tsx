@@ -5,11 +5,15 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import {
   EMPTY_DEMO_SNAPSHOT,
+  EMPTY_LOCATIONS_SNAPSHOT,
   getDemoSnapshotString,
+  getLocationsSnapshotString,
   safeParse,
+  setActiveLocationId,
   setSession,
   subscribeToDemoChanges,
   type DemoSnapshot,
+  type LocationsSnapshot,
 } from "../_lib/demo-store";
 
 type NavItem = {
@@ -117,6 +121,15 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     () => safeParse<DemoSnapshot>(snapshotString, { email: null, business: null, location: null }),
     [snapshotString]
   );
+  const locationsSnapshotString = useSyncExternalStore(
+    subscribeToDemoChanges,
+    getLocationsSnapshotString,
+    () => EMPTY_LOCATIONS_SNAPSHOT
+  );
+  const { locations, activeId } = useMemo(
+    () => safeParse<LocationsSnapshot>(locationsSnapshotString, { locations: [], activeId: null }),
+    [locationsSnapshotString]
+  );
 
   function handleSignOut() {
     setSession(null);
@@ -213,6 +226,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </Link>
               ) : null}
             </div>
+            {locations.length > 1 ? (
+              <div className="mb-4">
+                <p className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  Location
+                </p>
+                <ul className="flex flex-col gap-1">
+                  {locations.map((loc) => {
+                    const active = loc.id === (activeId ?? location?.id);
+                    return (
+                      <li key={loc.id}>
+                        <button
+                          type="button"
+                          onClick={() => setActiveLocationId(loc.id)}
+                          aria-pressed={active}
+                          className={`block w-full rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 ${
+                            active
+                              ? "bg-zinc-100 text-zinc-950"
+                              : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                          }`}
+                        >
+                          {loc.name}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
             <SidebarNav />
           </div>
         </aside>

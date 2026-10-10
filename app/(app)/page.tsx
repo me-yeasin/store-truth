@@ -4,21 +4,32 @@ import Link from "next/link";
 import { useMemo, useSyncExternalStore } from "react";
 import PageHeader from "../_components/PageHeader";
 import {
+  clearSampleShop,
   EMPTY_BANK_SNAPSHOT,
   EMPTY_CASH_SNAPSHOT,
   EMPTY_DEMO_SNAPSHOT,
+  EMPTY_EXPENSE_SNAPSHOT,
+  EMPTY_INVENTORY_SNAPSHOT,
   EMPTY_SALES_SNAPSHOT,
   getBankSnapshotString,
   getCashSnapshotString,
   getDemoSnapshotString,
+  getExpenseSnapshotString,
+  getInventorySnapshotString,
   getSalesSnapshotString,
+  getSeedFlagSnapshotString,
+  inLocation,
   safeParse,
+  seedSampleShop,
   subscribeToDemoChanges,
   type DemoBank,
   type DemoCash,
+  type DemoExpense,
+  type DemoInventory,
   type DemoSale,
   type DemoSnapshot,
 } from "../_lib/demo-store";
+import { computeTruth } from "../_lib/truth";
 
 const QUICK_ACTIONS = [
   { href: "/sales", label: "Add sale" },
@@ -62,8 +73,13 @@ export default function Home() {
     getBankSnapshotString,
     () => EMPTY_BANK_SNAPSHOT
   );
+  const inventorySnapshotString = useSyncExternalStore(
+    subscribeToDemoChanges,
+    getInventorySnapshotString,
+    () => EMPTY_INVENTORY_SNAPSHOT
+  );
 
-  const { business, location } = useMemo(
+  const { email, business, location } = useMemo(
     () =>
       safeParse<DemoSnapshot>(snapshotString, {
         email: null,
@@ -72,44 +88,61 @@ export default function Home() {
       }),
     [snapshotString]
   );
+  const seedFlag = useSyncExternalStore(
+    subscribeToDemoChanges,
+    getSeedFlagSnapshotString,
+    () => ""
+  );
+  const seeded = seedFlag === "seeded";
   const sales = useMemo(
-    () => safeParse<DemoSale[]>(salesSnapshotString, []),
-    [salesSnapshotString]
+    () => inLocation(safeParse<DemoSale[]>(salesSnapshotString, []), location?.id ?? null),
+    [salesSnapshotString, location?.id]
   );
   const cashEntries = useMemo(
-    () => safeParse<DemoCash[]>(cashSnapshotString, []),
-    [cashSnapshotString]
+    () => inLocation(safeParse<DemoCash[]>(cashSnapshotString, []), location?.id ?? null),
+    [cashSnapshotString, location?.id]
   );
   const bankEntries = useMemo(
-    () => safeParse<DemoBank[]>(bankSnapshotString, []),
-    [bankSnapshotString]
+    () => inLocation(safeParse<DemoBank[]>(bankSnapshotString, []), location?.id ?? null),
+    [bankSnapshotString, location?.id]
+  );
+  const inventory = useMemo(
+    () => inLocation(safeParse<DemoInventory[]>(inventorySnapshotString, []), location?.id ?? null),
+    [inventorySnapshotString, location?.id]
+  );
+  const expenseSnapshotString = useSyncExternalStore(
+    subscribeToDemoChanges,
+    getExpenseSnapshotString,
+    () => EMPTY_EXPENSE_SNAPSHOT
+  );
+  const expenses = useMemo(
+    () => inLocation(safeParse<DemoExpense[]>(expenseSnapshotString, []), location?.id ?? null),
+    [expenseSnapshotString, location?.id]
   );
 
-  const currency = business?.currency ?? "USD";
-  const salesTotal = sales.reduce((sum, s) => sum + s.amount, 0);
-  const cashSales = sales
-    .filter((s) => s.method === "cash")
-    .reduce((sum, s) => sum + s.amount, 0);
-  const counted = cashEntries
-    .filter((e) => e.kind === "count")
-    .reduce((sum, e) => sum + e.amount, 0);
-  const cashIn = cashEntries
-    .filter((e) => e.kind === "in")
-    .reduce((sum, e) => sum + e.amount, 0);
-  const cashOut = cashEntries
-    .filter((e) => e.kind === "out")
-    .reduce((sum, e) => sum + e.amount, 0);
-  const expectedCash = cashSales + cashIn - cashOut;
-  const cashVariance = counted - expectedCash;
-  const deposits = bankEntries
-    .filter((e) => e.kind === "deposit")
-    .reduce((sum, e) => sum + e.amount, 0);
-  const bankGap = deposits - salesTotal;
-
-  const hasSales = sales.length > 0;
-  const hasCash = cashEntries.length > 0;
-  const hasBank = bankEntries.length > 0;
+  const truth = computeTruth(sales, cashEntries, bankEntries, business?.currency ?? "USD", inventory, expenses);
+  const {
+    currency,
+    salesTotal,
+    salesCount,
+    counted,
+    expectedCash,
+    cashVariance,
+    deposits,
+    bankGap,
+    hasSales,
+    hasCash,
+    hasBank,
+  } = truth;
   const hasAnything = hasSales || hasCash || hasBank;
+
+  function handleLoadSample() {
+    seedSampleShop(email ?? "demo-owner");
+  }
+
+  function handleClearSample() {
+    clearSampleShop();
+  }
 
   const cashState: { text: string; tone: PillTone } = !hasCash
     ? { text: "No data yet", tone: "neutral" }
@@ -126,26 +159,6 @@ export default function Home() {
       : Math.abs(bankGap) < 0.005
         ? { text: "Matches sales", tone: "good" }
         : { text: `${formatMoney(bankGap, currency)} vs sales`, tone: "warn" };
-
-  const truths: string[] = [];
-  if (hasCash && Math.abs(cashVariance) >= 0.005) {
-    truths.push(
-      cashVariance < 0
-        ? `Cash is short ${formatMoney(cashVariance, currency)}: counted ${formatMoney(counted, currency)}, expected ${formatMoney(expectedCash, currency)}.`
-        : `Cash is over ${formatMoney(cashVariance, currency)}: counted ${formatMoney(counted, currency)}, expected ${formatMoney(expectedCash, currency)}.`
-    );
-  }
-  if (hasBank && hasSales && Math.abs(bankGap) >= 0.005) {
-    truths.push(
-      `Bank deposits differ from sales by ${formatMoney(bankGap, currency)}: deposits ${formatMoney(deposits, currency)}, sales ${formatMoney(salesTotal, currency)}.`
-    );
-  }
-  if (hasBank && !hasSales) {
-    truths.push("Bank entries exist but there are no sales to match them against yet.");
-  }
-  if (hasSales && !hasCash && !hasBank) {
-    truths.push("Sales are recorded. Add a cash count and bank deposits to check the truth.");
-  }
 
   return (
     <div>
@@ -164,6 +177,43 @@ export default function Home() {
         </Link>
       </PageHeader>
 
+      {!hasAnything && !seeded ? (
+        <div className="mb-6 rounded-2xl border border-zinc-900 bg-zinc-900 p-6 text-white">
+          <h2 className="text-base font-bold">See how it works in 10 seconds</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-300">
+            Load a pretend Sample Shop — cash short, an unmatched deposit, a
+            stock gap, and a strange bill. Everything is labeled sample and you
+            can wipe it any time.
+          </p>
+          <button
+            type="button"
+            onClick={handleLoadSample}
+            className="mt-4 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-zinc-900 hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          >
+            Load sample shop
+          </button>
+        </div>
+      ) : null}
+
+      {seeded ? (
+        <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+          <p className="text-sm font-bold text-amber-900">
+            Sample shop loaded — pretend data for demo purposes.
+          </p>
+          <p className="mt-1 text-sm text-amber-800">
+            It lives in its own Sample Shop location, separate from your real
+            numbers.
+          </p>
+          <button
+            type="button"
+            onClick={handleClearSample}
+            className="mt-3 rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600"
+          >
+            Clear sample data
+          </button>
+        </div>
+      ) : null}
+
       <section aria-label="Sales, cash, and bank summary" className="grid gap-4 md:grid-cols-3">
         <div className="rounded-2xl border border-zinc-200 bg-white p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">
@@ -177,7 +227,7 @@ export default function Home() {
             className={`mt-3 inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${PILL_STYLES[hasSales ? "good" : "neutral"]}`}
           >
             {hasSales
-              ? `${sales.length} ${sales.length === 1 ? "sale" : "sales"} recorded`
+              ? `${salesCount} ${salesCount === 1 ? "sale" : "sales"} recorded`
               : "No data yet"}
           </p>
         </div>
@@ -230,20 +280,20 @@ export default function Home() {
                 today&apos;s numbers.
               </p>
             </>
-          ) : truths.length === 0 ? (
+          ) : truth.items.length === 0 ? (
             <p className="mt-1 text-sm leading-6 text-zinc-600">
               Everything lines up. Sales, cash, and bank agree.
             </p>
           ) : (
             <ul className="mt-3 flex flex-col gap-2">
-              {truths.map((truth) => (
-                <li key={truth} className="rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-900">
-                  {truth}
+              {truth.items.map((item) => (
+                <li key={item.id} className="rounded-xl bg-amber-50 p-3 text-sm leading-6 text-amber-900">
+                  {item.title}: {item.detail}
                 </li>
               ))}
             </ul>
           )}
-          {truths.length > 0 ? (
+          {truth.items.length > 0 ? (
             <Link
               href="/exceptions"
               className="mt-4 inline-block text-sm font-semibold text-zinc-900 underline-offset-4 hover:underline"

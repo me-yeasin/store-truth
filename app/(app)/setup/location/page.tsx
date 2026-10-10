@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
 import PageHeader from "../../../_components/PageHeader";
 import {
+  addLocation,
   EMPTY_DEMO_SNAPSHOT,
   getDemoSnapshotString,
   safeParse,
-  setLocation,
+  setActiveLocationId,
   subscribeToDemoChanges,
   type DemoSnapshot,
 } from "../../../_lib/demo-store";
@@ -33,7 +34,8 @@ export default function SetupLocationPage() {
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    setLocation({ name: name.trim() });
+    const created = addLocation(name.trim());
+    setActiveLocationId(created.id);
     router.push("/");
   }
 

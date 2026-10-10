@@ -10,6 +10,7 @@ import {
   EMPTY_DEMO_SNAPSHOT,
   getCashSnapshotString,
   getDemoSnapshotString,
+  inLocation,
   safeParse,
   subscribeToDemoChanges,
   todayISODate,
@@ -41,13 +42,13 @@ export default function CashPage() {
     getCashSnapshotString,
     () => EMPTY_CASH_SNAPSHOT
   );
-  const { email: sessionEmail, business } = useMemo(
+  const { email: sessionEmail, business, location } = useMemo(
     () => safeParse<DemoSnapshot>(snapshotString, { email: null, business: null, location: null }),
     [snapshotString]
   );
   const entries = useMemo(
-    () => safeParse<DemoCash[]>(cashSnapshotString, []),
-    [cashSnapshotString]
+    () => inLocation(safeParse<DemoCash[]>(cashSnapshotString, []), location?.id ?? null),
+    [cashSnapshotString, location?.id]
   );
   const [kind, setKind] = useState<DemoCash["kind"]>("count");
   const [amount, setAmount] = useState("");

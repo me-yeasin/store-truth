@@ -10,6 +10,7 @@ import {
   EMPTY_SALES_SNAPSHOT,
   getDemoSnapshotString,
   getSalesSnapshotString,
+  inLocation,
   safeParse,
   subscribeToDemoChanges,
   todayISODate,
@@ -37,13 +38,13 @@ export default function SalesPage() {
     getSalesSnapshotString,
     () => EMPTY_SALES_SNAPSHOT
   );
-  const { email: sessionEmail, business } = useMemo(
+  const { email: sessionEmail, business, location } = useMemo(
     () => safeParse<DemoSnapshot>(snapshotString, { email: null, business: null, location: null }),
     [snapshotString]
   );
   const sales = useMemo(
-    () => safeParse<DemoSale[]>(salesSnapshotString, []),
-    [salesSnapshotString]
+    () => inLocation(safeParse<DemoSale[]>(salesSnapshotString, []), location?.id ?? null),
+    [salesSnapshotString, location?.id]
   );
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState("");
@@ -116,7 +117,7 @@ export default function SalesPage() {
           >
             <h2 className="text-sm font-semibold">Add sale</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              Type what the POS shows{business ? ` for ${business.name}` : ""}.
+              Type what the POS shows{location ? ` for ${location.name}` : ""}.
             </p>
 
             <label htmlFor="sale-amount" className="mb-1 mt-4 block text-sm font-semibold">

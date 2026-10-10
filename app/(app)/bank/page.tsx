@@ -10,6 +10,7 @@ import {
   EMPTY_DEMO_SNAPSHOT,
   getBankSnapshotString,
   getDemoSnapshotString,
+  inLocation,
   safeParse,
   subscribeToDemoChanges,
   todayISODate,
@@ -41,13 +42,13 @@ export default function BankPage() {
     getBankSnapshotString,
     () => EMPTY_BANK_SNAPSHOT
   );
-  const { email: sessionEmail, business } = useMemo(
+  const { email: sessionEmail, business, location } = useMemo(
     () => safeParse<DemoSnapshot>(snapshotString, { email: null, business: null, location: null }),
     [snapshotString]
   );
   const entries = useMemo(
-    () => safeParse<DemoBank[]>(bankSnapshotString, []),
-    [bankSnapshotString]
+    () => inLocation(safeParse<DemoBank[]>(bankSnapshotString, []), location?.id ?? null),
+    [bankSnapshotString, location?.id]
   );
   const [kind, setKind] = useState<DemoBank["kind"]>("deposit");
   const [amount, setAmount] = useState("");
