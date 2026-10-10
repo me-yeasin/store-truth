@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState, useSyncExternalStore } from "react";
+import AssistantPanel from "./AssistantPanel";
 import {
   EMPTY_DEMO_SNAPSHOT,
   EMPTY_LOCATIONS_SNAPSHOT,
@@ -262,6 +263,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      <AssistantPanel />
 
       <nav
         aria-label="Primary mobile"

@@ -23,6 +23,20 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
+## AI assistant (optional)
+
+The in-app assistant needs a free OpenAI-compatible provider:
+
+```bash
+cp .env.example .env.local
+```
+
+Fill in `LLM_BASE_URL`, `LLM_MODEL`, and `LLM_API_KEY` in `.env.local`,
+then restart the dev server. The key stays on the server — the browser only
+talks to `/api/assistant`, which proxies chat and returns tool calls that run
+against local demo data (add sale/cash/bank/stock/expense, load samples, read
+the truth). Without these vars the assistant button explains what is missing.
+
 ## Project structure
 
 - `app/layout.tsx` — root layout, mounts `AppShell`
