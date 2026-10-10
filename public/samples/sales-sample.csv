@@ -1,0 +1,7 @@
+Total,Date,Payment,Note
+650,2026-10-10,cash,"Lunch, dinner rush"
+350,2026-10-10,card,Card terminal
+120,10/09/2026,credit,Morning takeaway
+bad-amount,2026-10-10,cash,This row will be rejected
+75,not-a-date,cash,This row has a bad date
+200,2026-10-10,bitcoin,Unknown payment method
