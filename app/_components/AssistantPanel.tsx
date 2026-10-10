@@ -1,13 +1,20 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { runAgent, type AgentAction } from "../_lib/assistant";
+import { runAgent, type AgentAction, type AgentEvent } from "../_lib/assistant";
 
 type Message = {
   id: string;
   role: "user" | "assistant";
   text: string;
   actions?: AgentAction[];
+};
+
+type LiveStep = {
+  id: string;
+  label: string;
+  detail?: string;
+  status: "doing" | "done" | "fail";
 };
 
 const SUGGESTIONS = [
@@ -34,11 +41,61 @@ export default function AssistantPanel() {
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [liveSteps, setLiveSteps] = useState<LiveStep[]>([]);
   const idRef = useRef(0);
 
   function nextId() {
     idRef.current += 1;
     return `m${idRef.current}`;
+  }
+
+  function handleEvent(event: AgentEvent) {
+    setLiveSteps((prev) => {
+      if (event.type === "thinking") {
+        const withoutThinking = prev.filter((s) => s.id !== "thinking");
+        if (event.round <= 1 && prev.length === 0) {
+          return [{ id: "thinking", label: "Understanding your request", status: "doing" }];
+        }
+        return [...withoutThinking, { id: "thinking", label: `Thinking further (step ${event.round})`, status: "doing" }];
+      }
+      if (event.type === "tool_start") {
+        const withoutThinking = prev.map((s) =>
+          s.id === "thinking" ? { ...s, status: "done" as const } : s
+        );
+        return [
+          ...withoutThinking,
+          { id: `tool-${Date.now()}-${event.name}`, label: toolVerb(event.name), detail: event.detail, status: "doing" },
+        ];
+      }
+      if (event.type === "tool_end") {
+        return prev.map((s, i) =>
+          i === prev.length - 1 && s.status === "doing"
+            ? { ...s, label: event.summary, detail: undefined, status: event.ok ? ("done" as const) : ("fail" as const) }
+            : s
+        );
+      }
+      if (event.type === "answering") {
+        const settled = prev.map((s) =>
+          s.status === "doing" ? { ...s, status: "done" as const } : s
+        );
+        return [...settled, { id: "answering", label: "Writing the answer", status: "doing" }];
+      }
+      return prev;
+    });
+  }
+
+  function toolVerb(name: string): string {
+    switch (name) {
+      case "add_sale": return "Recording sale";
+      case "add_cash": return "Recording cash";
+      case "add_bank": return "Recording bank";
+      case "add_inventory": return "Recording stock";
+      case "add_expense": return "Recording expense";
+      case "load_sample_shop": return "Loading sample shop";
+      case "get_summary":
+      case "list_exceptions": return "Reading today's truth";
+      default: return "Working";
+    }
   }
 
   async function send(text: string) {
@@ -49,14 +106,16 @@ export default function AssistantPanel() {
     const userMsg: Message = { id: nextId(), role: "user", text: clean };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    setLiveSteps([]);
     setPending(true);
     try {
-      const { text: reply, actions } = await runAgent(history, clean);
+      const { text: reply, actions } = await runAgent(history, clean, handleEvent);
       setMessages((prev) => [...prev, { id: nextId(), role: "assistant", text: reply, actions }]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Assistant failed. Try again.");
     } finally {
       setPending(false);
+      setLiveSteps([]);
     }
   }
 
@@ -139,9 +198,35 @@ export default function AssistantPanel() {
             ))}
 
             {pending ? (
-              <p className="text-sm text-zinc-500" role="status">
-                Working on it…
-              </p>
+              <div aria-label="Agent activity" role="status" className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
+                <ol className="flex flex-col gap-2">
+                  {liveSteps.map((step) => (
+                    <li key={step.id} className="flex items-start gap-2 text-xs">
+                      <span aria-hidden className="mt-0.5">
+                        {step.status === "doing" ? (
+                          <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-zinc-900" />
+                        ) : step.status === "done" ? (
+                          <span className="font-bold text-green-700">✓</span>
+                        ) : (
+                          <span className="font-bold text-red-600">!</span>
+                        )}
+                      </span>
+                      <span>
+                        <span className={`font-semibold ${step.status === "fail" ? "text-red-700" : "text-zinc-900"}`}>
+                          {step.label}
+                          {step.status === "doing" ? "…" : ""}
+                        </span>
+                        {step.detail ? (
+                          <span className="block font-normal text-zinc-500">{step.detail}</span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                  {liveSteps.length === 0 ? (
+                    <li className="text-xs text-zinc-500">Starting…</li>
+                  ) : null}
+                </ol>
+              </div>
             ) : null}
             {error ? (
               <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700">

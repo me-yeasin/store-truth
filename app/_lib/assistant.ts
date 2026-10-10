@@ -31,6 +31,12 @@ export type AgentAction = {
   ok: boolean;
 };
 
+export type AgentEvent =
+  | { type: "thinking"; round: number }
+  | { type: "tool_start"; name: string; detail: string }
+  | { type: "tool_end"; name: string; summary: string; ok: boolean }
+  | { type: "answering" };
+
 type WireMessage = {
   role: "system" | "user" | "assistant" | "tool";
   content: string | null;
@@ -154,9 +160,22 @@ function executeTool(name: string, args: Record<string, unknown>, owner: string)
   }
 }
 
+function describeArgs(name: string, args: Record<string, unknown>): string {
+  const parts: string[] = [];
+  const amount = num(args.amount);
+  if (amount !== null) parts.push(`${amount}`);
+  if (str(args.method)) parts.push(str(args.method));
+  if (str(args.kind)) parts.push(str(args.kind));
+  if (str(args.item)) parts.push(str(args.item));
+  if (str(args.vendor)) parts.push(str(args.vendor));
+  if (str(args.date)) parts.push(str(args.date));
+  if (parts.length === 0) return "checking numbers";
+  return parts.join(" · ");
+}
 export async function runAgent(
   history: Array<{ role: "user" | "assistant"; text: string }>,
-  userText: string
+  userText: string,
+  onEvent?: (event: AgentEvent) => void
 ): Promise<{ text: string; actions: AgentAction[] }> {
   const owner = getSession()?.email ?? "demo-owner";
   const messages: WireMessage[] = [
@@ -167,6 +186,7 @@ export async function runAgent(
   const actions: AgentAction[] = [];
 
   for (let round = 0; round < 5; round++) {
+    onEvent?.({ type: "thinking", round: round + 1 });
     const res = await fetch("/api/assistant", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -179,6 +199,7 @@ export async function runAgent(
     const message = data.message as WireMessage;
     const calls = message?.tool_calls ?? [];
     if (calls.length === 0) {
+      onEvent?.({ type: "answering" });
       return { text: message?.content?.trim() || "Done.", actions };
     }
     messages.push({
@@ -193,7 +214,9 @@ export async function runAgent(
       } catch {
         args = {};
       }
+      onEvent?.({ type: "tool_start", name: call.function.name, detail: describeArgs(call.function.name, args) });
       const done = executeTool(call.function.name, args, owner);
+      onEvent?.({ type: "tool_end", name: call.function.name, summary: done.summary, ok: done.ok });
       actions.push({ name: call.function.name, summary: done.summary, ok: done.ok });
       messages.push({ role: "tool", content: done.result, tool_call_id: call.id });
     }
