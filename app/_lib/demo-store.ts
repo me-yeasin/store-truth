@@ -90,6 +90,16 @@ export type DemoImport = {
   createdAt: string;
 };
 
+export type DemoAudit = {
+  id: string;
+  locationId: string | null;
+  action: "added" | "deleted" | "imported" | "reviewed" | "reopened" | "sample" | "location";
+  section: string;
+  summary: string;
+  ownerEmail: string;
+  createdAt: string;
+};
+
 const USERS_KEY = "store-truth-demo-users";
 const SESSION_KEY = "store-truth-demo-session";
 const BUSINESS_KEY = "store-truth-demo-business";
@@ -104,6 +114,7 @@ const EXPENSE_KEY = "store-truth-demo-expenses";
 const SEED_IDS_KEY = "store-truth-demo-seed-ids";
 const SEED_FLAG_KEY = "store-truth-demo-seeded";
 const IMPORTS_KEY = "store-truth-demo-imports";
+const AUDIT_KEY = "store-truth-demo-audit";
 
 function newId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -227,6 +238,13 @@ export const EMPTY_IMPORTS_SNAPSHOT = "[]";
 export function getImportsSnapshotString(): string {
   if (!isBrowser()) return EMPTY_IMPORTS_SNAPSHOT;
   return JSON.stringify(getImports());
+}
+
+export const EMPTY_AUDIT_SNAPSHOT = "[]";
+
+export function getAuditSnapshotString(): string {
+  if (!isBrowser()) return EMPTY_AUDIT_SNAPSHOT;
+  return JSON.stringify(getAudit());
 }
 
 export function getUsers(): DemoUser[] {
@@ -363,6 +381,13 @@ export function addLocation(name: string): DemoLocation {
   if (!read<string | null>(ACTIVE_LOCATION_KEY, null)) {
     write(ACTIVE_LOCATION_KEY, created.id);
   }
+  logAudit({
+    locationId: created.id,
+    action: "location",
+    section: "Locations",
+    summary: `Location added: ${created.name}`,
+    ownerEmail: getSession()?.email ?? "demo-owner",
+  });
   return created;
 }
 
@@ -400,14 +425,31 @@ export function addSale(sale: Omit<DemoSale, "id" | "createdAt" | "locationId">)
     createdAt: new Date().toISOString(),
   };
   write(SALES_KEY, [entry, ...getSales()]);
+  logAudit({
+    locationId: entry.locationId,
+    action: "added",
+    section: "Sales",
+    summary: `Sale ${entry.amount.toFixed(2)} (${entry.method}) on ${entry.date}${entry.note ? ` · ${entry.note}` : ""}`,
+    ownerEmail: entry.ownerEmail,
+  });
   return entry;
 }
 
 export function deleteSale(id: string) {
+  const found = getSales().find((s) => s.id === id);
   write(
     SALES_KEY,
     getSales().filter((s) => s.id !== id)
   );
+  if (found) {
+    logAudit({
+      locationId: found.locationId,
+      action: "deleted",
+      section: "Sales",
+      summary: `Sale ${found.amount.toFixed(2)} on ${found.date}`,
+      ownerEmail: found.ownerEmail,
+    });
+  }
 }
 
 export function getCash(): DemoCash[] {
@@ -422,14 +464,31 @@ export function addCash(entry: Omit<DemoCash, "id" | "createdAt" | "locationId">
     createdAt: new Date().toISOString(),
   };
   write(CASH_KEY, [record, ...getCash()]);
+  logAudit({
+    locationId: record.locationId,
+    action: "added",
+    section: "Cash",
+    summary: `${record.kind} ${record.amount.toFixed(2)} on ${record.date}${record.note ? ` · ${record.note}` : ""}`,
+    ownerEmail: record.ownerEmail,
+  });
   return record;
 }
 
 export function deleteCash(id: string) {
+  const found = getCash().find((c) => c.id === id);
   write(
     CASH_KEY,
     getCash().filter((c) => c.id !== id)
   );
+  if (found) {
+    logAudit({
+      locationId: found.locationId,
+      action: "deleted",
+      section: "Cash",
+      summary: `${found.kind} ${found.amount.toFixed(2)} on ${found.date}`,
+      ownerEmail: found.ownerEmail,
+    });
+  }
 }
 
 export function getBank(): DemoBank[] {
@@ -444,14 +503,31 @@ export function addBank(entry: Omit<DemoBank, "id" | "createdAt" | "locationId">
     createdAt: new Date().toISOString(),
   };
   write(BANK_KEY, [record, ...getBank()]);
+  logAudit({
+    locationId: record.locationId,
+    action: "added",
+    section: "Bank",
+    summary: `${record.kind} ${record.amount.toFixed(2)} on ${record.date}${record.note ? ` · ${record.note}` : ""}`,
+    ownerEmail: record.ownerEmail,
+  });
   return record;
 }
 
 export function deleteBank(id: string) {
+  const found = getBank().find((b) => b.id === id);
   write(
     BANK_KEY,
     getBank().filter((b) => b.id !== id)
   );
+  if (found) {
+    logAudit({
+      locationId: found.locationId,
+      action: "deleted",
+      section: "Bank",
+      summary: `${found.kind} ${found.amount.toFixed(2)} on ${found.date}`,
+      ownerEmail: found.ownerEmail,
+    });
+  }
 }
 
 export function getInventory(): DemoInventory[] {
@@ -466,14 +542,31 @@ export function addInventory(entry: Omit<DemoInventory, "id" | "createdAt" | "lo
     createdAt: new Date().toISOString(),
   };
   write(INVENTORY_KEY, [record, ...getInventory()]);
+  logAudit({
+    locationId: record.locationId,
+    action: "added",
+    section: "Inventory",
+    summary: `${record.item}: should ${record.expected}, counted ${record.counted} on ${record.date}`,
+    ownerEmail: record.ownerEmail,
+  });
   return record;
 }
 
 export function deleteInventory(id: string) {
+  const found = getInventory().find((i) => i.id === id);
   write(
     INVENTORY_KEY,
     getInventory().filter((i) => i.id !== id)
   );
+  if (found) {
+    logAudit({
+      locationId: found.locationId,
+      action: "deleted",
+      section: "Inventory",
+      summary: `${found.item} count on ${found.date}`,
+      ownerEmail: found.ownerEmail,
+    });
+  }
 }
 
 export function getExpenses(): DemoExpense[] {
@@ -489,21 +582,48 @@ export function addExpense(entry: Omit<DemoExpense, "id" | "createdAt" | "status
     createdAt: new Date().toISOString(),
   };
   write(EXPENSE_KEY, [record, ...getExpenses()]);
+  logAudit({
+    locationId: record.locationId,
+    action: "added",
+    section: "Vendors",
+    summary: `${record.vendor} ${record.amount.toFixed(2)} on ${record.date}`,
+    ownerEmail: record.ownerEmail,
+  });
   return record;
 }
 
 export function setExpenseStatus(id: string, status: DemoExpense["status"]) {
+  const found = getExpenses().find((e) => e.id === id);
   write(
     EXPENSE_KEY,
     getExpenses().map((e) => (e.id === id ? { ...e, status } : e))
   );
+  if (found && found.status !== status) {
+    logAudit({
+      locationId: found.locationId,
+      action: status === "reviewed" ? "reviewed" : "reopened",
+      section: "Vendors",
+      summary: `${found.vendor} ${found.amount.toFixed(2)} marked ${status}`,
+      ownerEmail: found.ownerEmail,
+    });
+  }
 }
 
 export function deleteExpense(id: string) {
+  const found = getExpenses().find((e) => e.id === id);
   write(
     EXPENSE_KEY,
     getExpenses().filter((e) => e.id !== id)
   );
+  if (found) {
+    logAudit({
+      locationId: found.locationId,
+      action: "deleted",
+      section: "Vendors",
+      summary: `${found.vendor} ${found.amount.toFixed(2)} on ${found.date}`,
+      ownerEmail: found.ownerEmail,
+    });
+  }
 }
 
 export function getImports(): DemoImport[] {
@@ -518,6 +638,28 @@ export function addImport(entry: Omit<DemoImport, "id" | "createdAt">): DemoImpo
   };
   // Keep the most recent 20 imports.
   write(IMPORTS_KEY, [record, ...getImports()].slice(0, 20));
+  logAudit({
+    locationId: record.locationId,
+    action: "imported",
+    section: record.section,
+    summary: `${record.fileName}: ${record.imported} of ${record.total} rows in, ${record.rejected} rejected`,
+    ownerEmail: record.ownerEmail,
+  });
+  return record;
+}
+
+export function getAudit(): DemoAudit[] {
+  return read<DemoAudit[]>(AUDIT_KEY, []);
+}
+
+export function logAudit(entry: Omit<DemoAudit, "id" | "createdAt">): DemoAudit {
+  const record: DemoAudit = {
+    ...entry,
+    id: newId(),
+    createdAt: new Date().toISOString(),
+  };
+  // Keep the most recent 100 events.
+  write(AUDIT_KEY, [record, ...getAudit()].slice(0, 100));
   return record;
 }
 
@@ -686,6 +828,13 @@ export function seedSampleShop(ownerEmail: string): SeedIds {
 
   write(SEED_IDS_KEY, ids);
   write(SEED_FLAG_KEY, true);
+  logAudit({
+    locationId: sample.id,
+    action: "sample",
+    section: "Sample",
+    summary: "Sample shop loaded: 2 sales, 2 cash, 1 bank, 2 stock, 2 expenses",
+    ownerEmail,
+  });
   return ids;
 }
 
@@ -704,4 +853,11 @@ export function clearSampleShop(): void {
   drop(EXPENSE_KEY, ids.expenses);
   remove(SEED_IDS_KEY);
   remove(SEED_FLAG_KEY);
+  logAudit({
+    locationId: getActiveLocationId(),
+    action: "sample",
+    section: "Sample",
+    summary: "Sample shop cleared",
+    ownerEmail: getSession()?.email ?? "demo-owner",
+  });
 }
